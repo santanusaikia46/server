@@ -57,15 +57,16 @@ const limiter = rateLimit({
 app.use(limiter);
 
 const allowedOrigins = [
-  process.env.CLIENT_URL,
+  process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : undefined,
   "http://localhost:3000",
-  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [])
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",").map(url => url.trim().replace(/\/$/, "")) : [])
 ].filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const originClean = origin ? origin.replace(/\/$/, "") : origin;
+      if (!originClean || allowedOrigins.includes(originClean)) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));

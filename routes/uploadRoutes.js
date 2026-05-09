@@ -22,7 +22,7 @@ router.post("/", auth, admin, upload.single("image"), async (req, res, next) => 
       public_id: result.public_id,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
