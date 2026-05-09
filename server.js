@@ -66,7 +66,9 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const originClean = origin ? origin.replace(/\/$/, "") : origin;
-      if (!originClean || allowedOrigins.includes(originClean)) {
+      
+      // Allow if origin is in the allowed list, or if it's a Vercel deployment URL
+      if (!originClean || allowedOrigins.includes(originClean) || originClean.endsWith(".vercel.app")) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
