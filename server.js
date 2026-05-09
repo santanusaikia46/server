@@ -78,6 +78,10 @@ app.use(
 );
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.status(200).json({ success: true, message: "Welcome to the TatiAssam API. Server is live and running." });
+});
+
 app.get("/api/health", (req, res) => {
   res.status(200).json({ success: true, message: "Server is running." });
 });
