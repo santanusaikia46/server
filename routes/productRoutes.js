@@ -6,6 +6,14 @@ const { productSchema, validate, validateId } = require("../utils/validation");
 
 const router = express.Router();
 
+// Simple in-memory cache to make GET requests super fast
+const cache = new Map();
+const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+
+const clearCache = () => {
+  cache.clear();
+};
+
 const sanitizeProduct = (product) => ({
   _id: product.id,
   id: product.id,
@@ -17,7 +25,17 @@ router.get("/", async (req, res, next) => {
   try {
     const { keyword, category, minPrice, maxPrice, size, color, inStock, sort, limit, page, admin } = req.query;
     
-    let query = supabase.from('products').select('id, name, price, image, category, countInStock, variants, isActive, featured, createdAt', { count: 'exact' });
+    // Check cache first (skip cache for admin)
+    const cacheKey = `products_${req.originalUrl}`;
+    if (admin !== 'true' && cache.has(cacheKey)) {
+      const cached = cache.get(cacheKey);
+      if (Date.now() < cached.expiry) {
+        return res.json(cached.data);
+      }
+    }
+    
+    // Remove { count: 'exact' } as it causes full table scans and slows down the DB
+    let query = supabase.from('products').select('id, name, price, image, category, countInStock, variants, isActive, featured, createdAt');
 
     if (admin !== 'true') {
       query = query.eq('isActive', true);
@@ -75,20 +93,25 @@ router.get("/", async (req, res, next) => {
 
     query = query.range(skip, skip + limitNumber - 1);
 
-    const { data: products, count, error } = await query;
+    const { data: products, error } = await query;
     
     if (error) throw error;
 
-    res.json({ 
+    const responseData = { 
       success: true, 
       data: products.map(sanitizeProduct),
       pagination: {
-        total: count,
         page: pageNumber,
-        pages: Math.ceil(count / limitNumber),
         limit: limitNumber
       }
-    });
+    };
+
+    // Store in cache
+    if (admin !== 'true') {
+      cache.set(cacheKey, { data: responseData, expiry: Date.now() + CACHE_TTL });
+    }
+
+    res.json(responseData);
   } catch (error) {
     next(error);
   }
@@ -97,6 +120,14 @@ router.get("/", async (req, res, next) => {
 // GET featured products
 router.get("/featured", async (req, res, next) => {
   try {
+    const cacheKey = "products_featured";
+    if (cache.has(cacheKey)) {
+      const cached = cache.get(cacheKey);
+      if (Date.now() < cached.expiry) {
+        return res.json(cached.data);
+      }
+    }
+
     const { data: products, error } = await supabase
       .from('products')
       .select('id, name, price, image, category, countInStock, variants, isActive, featured, createdAt')
@@ -115,10 +146,15 @@ router.get("/featured", async (req, res, next) => {
         .limit(5);
         
       if (fallbackError) throw fallbackError;
-      return res.json({ success: true, data: fallback.map(sanitizeProduct) });
+      
+      const responseData = { success: true, data: fallback.map(sanitizeProduct) };
+      cache.set(cacheKey, { data: responseData, expiry: Date.now() + CACHE_TTL });
+      return res.json(responseData);
     }
     
-    res.json({ success: true, data: products.map(sanitizeProduct) });
+    const responseData = { success: true, data: products.map(sanitizeProduct) };
+    cache.set(cacheKey, { data: responseData, expiry: Date.now() + CACHE_TTL });
+    res.json(responseData);
   } catch (error) {
     next(error);
   }
@@ -186,6 +222,8 @@ router.post("/", auth, admin, validate(productSchema), async (req, res, next) =>
       
     if (error) throw error;
 
+    clearCache(); // Invalidate cache on new product
+
     res.status(201).json({ success: true, data: sanitizeProduct(createdProduct) });
   } catch (error) {
     next(error);
@@ -229,6 +267,7 @@ router.put("/:id", auth, admin, validateId, async (req, res, next) => {
     if (error) throw error;
 
     if (updatedProduct) {
+      clearCache(); // Invalidate cache on update
       res.json({ success: true, data: sanitizeProduct(updatedProduct) });
     } else {
       res.status(404).json({ success: false, message: "Product not found" });
@@ -260,6 +299,7 @@ router.delete("/:id", auth, admin, validateId, async (req, res, next) => {
     if (error) throw error;
 
     if (product) {
+      clearCache(); // Invalidate cache on delete
       res.json({ success: true, message: "Product removed" });
     } else {
       res.status(404).json({ success: false, message: "Product not found" });
