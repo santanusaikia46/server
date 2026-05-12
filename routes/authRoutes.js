@@ -127,6 +127,10 @@ router.post("/signup", authLimiter, validate(signupSchema), async (req, res, nex
       });
     } catch (error) {
       console.error("Failed to send verification email during signup:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Account created, but we couldn't send the verification email. Please try to login to resend the code." 
+      });
     }
 
     return res.status(201).json({
@@ -186,6 +190,10 @@ router.post("/login", loginLimiter, validate(loginSchema), async (req, res, next
         });
       } catch (error) {
         console.error("Failed to send verification email during login:", error);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to send verification email. Please try again later." 
+        });
       }
 
       return res.status(403).json({
