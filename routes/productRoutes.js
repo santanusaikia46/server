@@ -17,7 +17,7 @@ router.get("/", async (req, res, next) => {
   try {
     const { keyword, category, minPrice, maxPrice, size, color, inStock, sort, limit, page, admin } = req.query;
     
-    let query = supabase.from('products').select('*', { count: 'exact' });
+    let query = supabase.from('products').select('id, name, price, image, category, countInStock, variants, isActive, featured, createdAt', { count: 'exact' });
 
     if (admin !== 'true') {
       query = query.eq('isActive', true);
@@ -99,7 +99,7 @@ router.get("/featured", async (req, res, next) => {
   try {
     const { data: products, error } = await supabase
       .from('products')
-      .select('*')
+      .select('id, name, price, image, category, countInStock, variants, isActive, featured, createdAt')
       .eq('featured', true)
       .eq('isActive', true);
       
@@ -109,7 +109,7 @@ router.get("/featured", async (req, res, next) => {
     if (!products || products.length === 0) {
       const { data: fallback, error: fallbackError } = await supabase
         .from('products')
-        .select('*')
+        .select('id, name, price, image, category, countInStock, variants, isActive, featured, createdAt')
         .eq('isActive', true)
         .order('createdAt', { ascending: false })
         .limit(5);

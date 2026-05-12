@@ -129,6 +129,24 @@ app.use((err, req, res, next) => {
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
+    
+    // Self-ping to keep the server awake (specifically for free tier hosting like Render)
+    // Runs every 40 seconds
+    const pingInterval = 40 * 1000;
+    setInterval(async () => {
+      try {
+        // Use the public server URL if available, otherwise fallback to localhost
+        const serverUrl = process.env.SERVER_URL || `http://localhost:${PORT}`;
+        const response = await fetch(`${serverUrl}/api/health`);
+        if (response.ok) {
+          console.log(`[Keep-Alive] Ping successful at ${new Date().toISOString()}`);
+        } else {
+          console.log(`[Keep-Alive] Ping failed with status: ${response.status}`);
+        }
+      } catch (error) {
+        console.error(`[Keep-Alive] Ping error:`, error.message);
+      }
+    }, pingInterval);
   });
 }
 
