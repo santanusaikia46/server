@@ -1,4 +1,8 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns");
+
+// Force IPv4 DNS resolution first to prevent ENETUNREACH errors on IPv6 networks
+dns.setDefaultResultOrder("ipv4first");
 
 const sendEmail = async (options) => {
   // Create a transporter

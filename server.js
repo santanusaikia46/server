@@ -69,7 +69,7 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const originClean = origin ? origin.replace(/\/$/, "") : origin;
-      
+
       // Allow if origin is in the allowed list, or if it's a Vercel deployment URL
       if (!originClean || allowedOrigins.includes(originClean) || originClean.endsWith(".vercel.app")) {
         callback(null, true);
@@ -109,7 +109,7 @@ app.use((err, req, res, next) => {
 
   // Determine status code
   const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
-  
+
   // Safe error message for client
   const message = process.env.NODE_ENV === "production" && statusCode === 500
     ? "An internal server error occurred. Please try again later."
@@ -119,9 +119,9 @@ app.use((err, req, res, next) => {
     success: false,
     message,
     // Only include stack trace and error details in non-production environments
-    ...(process.env.NODE_ENV !== "production" && { 
+    ...(process.env.NODE_ENV !== "production" && {
       stack: err.stack,
-      details: err.details || null 
+      details: err.details || null
     }),
   });
 });
@@ -129,10 +129,10 @@ app.use((err, req, res, next) => {
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
-    
+
     // Self-ping to keep the server awake (specifically for free tier hosting like Render)
-    // Runs every 40 seconds
-    const pingInterval = 40 * 1000;
+    // Runs every 60 seconds
+    const pingInterval = 60 * 1000;
     setInterval(async () => {
       try {
         // Use the public server URL if available, otherwise fallback to localhost

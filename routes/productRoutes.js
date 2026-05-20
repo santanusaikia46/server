@@ -35,7 +35,11 @@ router.get("/", async (req, res, next) => {
     }
     
     // Remove { count: 'exact' } as it causes full table scans and slows down the DB
-    let query = supabase.from('products').select('id, name, price, image, category, countInStock, variants, isActive, featured, createdAt');
+    let selectFields = admin === 'true' 
+      ? '*' 
+      : 'id, name, price, image, category, countInStock, variants, isActive, featured, createdAt';
+    
+    let query = supabase.from('products').select(selectFields);
 
     if (admin !== 'true') {
       query = query.eq('isActive', true);
