@@ -1,59 +1,33 @@
-const nodemailer = require("nodemailer");
-const dns = require("dns");
+const { Resend } = require("resend");
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async (options) => {
-  // Manually resolve the IPv4 address to definitively bypass Node.js IPv6 ENETUNREACH issues
-  const ipv4Address = await new Promise((resolve, reject) => {
-    dns.lookup("smtp.gmail.com", { family: 4 }, (err, address) => {
-      if (err) reject(err);
-      else resolve(address);
+  try {
+    console.log(`Attempting to send email to: ${options.email} via Resend`);
+    
+    // The "from" address in Resend must be a verified domain.
+    // For testing without a verified domain, Resend allows sending from 'onboarding@resend.dev' 
+    // to the email address associated with your Resend account.
+    // Replace with your verified domain email (e.g. no-reply@yourdomain.com) when ready for production.
+    const fromAddress = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+    
+    const { data, error } = await resend.emails.send({
+      from: `TatiAssam <${fromAddress}>`,
+      to: options.email,
+      subject: options.subject,
+      html: options.html,
     });
-  });
 
-  // Create a transporter
-  const transporter = nodemailer.createTransport({
-    host: ipv4Address,
-    port: 465,
-    secure: true, // use SSL/TLS
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    tls: {
-      servername: "smtp.gmail.com", // Required for certificate validation when using an IP address
-    },
-  });
+    if (error) {
+      console.error("Resend API Error:", error);
+      throw new Error(error.message);
+    }
 
-  // Verify connection configuration
-  try {
-    await transporter.verify();
-    console.log("SMTP server connection verified successfully");
-  } catch (verifyError) {
-    console.error("SMTP verification failed:", verifyError);
-    throw verifyError;
-  }
-
-  // Define email options
-  const mailOptions = {
-    from: `"TatiAssam" <${process.env.SMTP_USER}>`,
-    to: options.email,
-    subject: options.subject,
-    html: options.html,
-  };
-
-  // Send the email
-  try {
-    console.log(`Attempting to send email to: ${options.email}`);
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`Email sent successfully. Message ID: ${info.messageId}`);
-    return info;
+    console.log(`Email sent successfully via Resend. Message ID: ${data.id}`);
+    return data;
   } catch (error) {
-    console.error("Error sending email:", {
-      message: error.message,
-      code: error.code,
-      command: error.command,
-      response: error.response
-    });
+    console.error("Error sending email:", error.message);
     throw error;
   }
 };
