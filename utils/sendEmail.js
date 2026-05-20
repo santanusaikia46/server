@@ -1,20 +1,27 @@
 const nodemailer = require("nodemailer");
 const dns = require("dns");
 
-// Force IPv4 DNS resolution first to prevent ENETUNREACH errors on IPv6 networks
-dns.setDefaultResultOrder("ipv4first");
-
 const sendEmail = async (options) => {
+  // Manually resolve the IPv4 address to definitively bypass Node.js IPv6 ENETUNREACH issues
+  const ipv4Address = await new Promise((resolve, reject) => {
+    dns.lookup("smtp.gmail.com", { family: 4 }, (err, address) => {
+      if (err) reject(err);
+      else resolve(address);
+    });
+  });
+
   // Create a transporter
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
+    host: ipv4Address,
     port: 587,
     secure: false, // use STARTTLS
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-    family: 4, // Force IPv4
+    tls: {
+      servername: "smtp.gmail.com", // Required for certificate validation when using an IP address
+    },
   });
 
   // Verify connection configuration
