@@ -13,8 +13,8 @@ const sendEmail = async (options) => {
   // Create a transporter
   const transporter = nodemailer.createTransport({
     host: ipv4Address,
-    port: 587,
-    secure: false, // use STARTTLS
+    port: 465,
+    secure: true, // use SSL/TLS
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
