@@ -50,15 +50,7 @@ app.use(xss());
 // Prevent HTTP param pollution
 app.use(hpp());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per `window`
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-});
-app.use(limiter);
-
+// CORS Configuration should be before rate limiting and other middlewares that might reject requests
 const allowedOrigins = [
   process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : undefined,
   "http://localhost:3000",
@@ -81,6 +73,15 @@ app.use(
     credentials: true,
   })
 );
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Limit each IP to 1000 requests per `window`
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+app.use(limiter);
 app.use(express.json());
 
 app.get("/", (req, res) => {
