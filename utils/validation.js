@@ -54,7 +54,7 @@ const enquirySchema = z.object({
 const productSchema = z.object({
   name: z.string().min(2, "Product name is required"),
   price: z.number().nonnegative("Price must be non-negative").optional(),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  description: z.string().optional(),
   image: z.string().url("Valid image URL is required").optional(),
   images: z.array(z.string().url()).optional(),
   category: z.string().min(1, "Category is required").optional(),
