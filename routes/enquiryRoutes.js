@@ -1,5 +1,5 @@
 const express = require("express");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const twilio = require("twilio");
 const supabase = require("../config/supabase");
 const auth = require("../middleware/auth");
@@ -79,26 +79,13 @@ router.post("/", validate(enquirySchema), async (req, res, next) => {
       console.warn("Twilio is not fully configured. Missing environment variables.");
     }
 
-    // Send email using nodemailer
-    const { GMAIL_EMAIL, GMAIL_APP_PASSWORD } = process.env;
-    if (GMAIL_EMAIL && GMAIL_APP_PASSWORD) {
+    // Send email using Resend
+    const { RESEND_API_KEY, RESEND_FROM_EMAIL, ADMIN_EMAIL } = process.env;
+    if (RESEND_API_KEY && RESEND_FROM_EMAIL && ADMIN_EMAIL) {
       try {
-        const transporter = nodemailer.createTransport({
-          host: "smtp.gmail.com",
-          port: 465,
-          secure: true,
-          auth: {
-            user: GMAIL_EMAIL,
-            pass: GMAIL_APP_PASSWORD,
-          },
-        });
+        const resend = new Resend(RESEND_API_KEY);
 
-        const mailOptions = {
-          from: GMAIL_EMAIL,
-          to: GMAIL_EMAIL, // Send to admin's own email
-          replyTo: email,
-          subject: `New Product Enquiry from ${name} for ${prod.name}`,
-          html: `
+        const htmlContent = `
             <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #eaeaec; border-radius: 8px; overflow: hidden; color: #333333;">
               <div style="background-color: #111111; padding: 24px; text-align: center;">
                 <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px;">TatiAssam</h1>
@@ -159,16 +146,21 @@ router.post("/", validate(enquirySchema), async (req, res, next) => {
                 <p style="font-size: 12px; color: #9ca3af; margin: 0;">This is an automated notification from the TatiAssam platform.</p>
               </div>
             </div>
-          `,
-        };
+          `;
 
-        await transporter.sendMail(mailOptions);
+        await resend.emails.send({
+          from: RESEND_FROM_EMAIL,
+          to: ADMIN_EMAIL,
+          reply_to: email,
+          subject: `New Product Enquiry from ${name} for ${prod.name}`,
+          html: htmlContent,
+        });
       } catch (emailError) {
         console.error("Failed to send email notification:", emailError);
         // Continue, as the enquiry is already saved in DB
       }
     } else {
-      console.warn("Nodemailer is not configured. Missing GMAIL_EMAIL or GMAIL_APP_PASSWORD in .env");
+      console.warn("Resend is not configured. Missing RESEND_API_KEY, RESEND_FROM_EMAIL or ADMIN_EMAIL in .env");
     }
 
     res.status(201).json({
